@@ -2,26 +2,24 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { User, UserDocument } from './schemas/user.schema';
+import { User } from './schemas/user.schema';
 import { Model } from 'mongoose';
 
 @Injectable()
 export class UserService {
-  constructor(
-    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) {}
+  constructor(@InjectModel('User') private readonly userModel: Model<User>) {}
 
-  private async findUser(id: string): Promise<UserDocument> {
+  private async findUser(id: string): Promise<User> {
     let user;
     try {
       user = await this.userModel.findById(id);
     } catch (error) {
       throw new NotFoundException('Could not find user.');
     }
-    if (!user) {
+    if (!user || user.deletedAt !== null) {
       throw new NotFoundException('Could not find user.');
     }
-    return user as UserDocument;
+    return user as User;
   }
 
   async create(createUserDto: CreateUserDto): Promise<string> {
@@ -32,11 +30,28 @@ export class UserService {
 
   async findAll() {
     const users = await this.userModel.find().exec();
-    return users as User[];
+    const result = users.filter((user) => user.deletedAt === null);
+    return result.map((user) => ({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      description: user.description,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      deletedAt: user.deletedAt,
+    }));
   }
 
   async findOne(id: string) {
-    return await this.findUser(id);
+    const user = await this.findUser(id);
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      description: user.description,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
@@ -50,10 +65,13 @@ export class UserService {
   }
 
   async remove(id: string) {
-    const result = await this.userModel.deleteOne({ _id: id }).exec();
-    if (result.n === 0) {
-      throw new NotFoundException('Could not find user.');
-    }
-    return { deleted: result.n };
+    // const result = await this.userModel.deleteOne({ _id: id }).exec();
+    // if (result.n === 0) {
+    //   throw new NotFoundException('Could not find user.');
+    // }
+    const user = await this.findUser(id);
+    user.deletedAt = new Date();
+    await user.save();
+    return { message: `User ID: ${id} soft deleted` };
   }
 }
