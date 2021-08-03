@@ -1,0 +1,28 @@
+services:
+  nest-api:
+    container_name: nest-api
+    image: user-example
+    environment:
+      - MONGO_HOST=nest-mongo
+      - MONGO_USERNAME=admin
+      - MONGO_PASSWORD=root
+      - MONGO_PORT=27017
+      - MONGO_DB_NAME=example
+      - MONGO_AUTH_SRC=admin
+    build: .
+    command: npm run start:prod
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+  nest-mongo:
+    container_name: nest-mongo
+    image: mongo:latest
+    environment:
+      - MONGO_INITDB_DATABASE=example
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    ports:
+      - '27017:27017'
+
+networks:
+  user-network:
