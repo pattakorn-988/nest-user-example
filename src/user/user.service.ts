@@ -29,9 +29,8 @@ export class UserService {
   }
 
   async findAll() {
-    const users = await this.userModel.find().exec();
-    const result = users.filter((user) => user.deletedAt === null);
-    return result.map((user) => ({
+    const users = await this.userModel.find({ deletedAt: null }).exec();
+    return users.map((user) => ({
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
